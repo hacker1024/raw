@@ -1,0 +1,21 @@
+name: raw
+version: 0.0.1
+author: terrier989 <terrier989@gmail.com>
+homepage: https://github.com/terrier989/dart-raw
+description:
+  A package for writing, reading, and debuggging binary data.
+  For example, you can create "struct-like" classes and get descriptive test error messages when
+  bytes don't match expectations.
+
+environment:
+  sdk: '>=2.0.0 <3.0.0'
+
+dependencies:
+  collection: '^1.0.0'
+  fixnum: '^0.10.0'
+  matcher: '>=0.9.0 <2.0.0'
+  meta: '^1.0.0'
+
+dev_dependencies:
+  benchmark_harness: any
+  test: ^1.0.0
