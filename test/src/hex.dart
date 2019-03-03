@@ -1,3 +1,17 @@
+// Copyright 2019 dart-raw authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 import 'package:raw/raw.dart';
 import 'package:raw/test_helpers.dart';
 import 'package:test/test.dart';
@@ -30,25 +44,9 @@ void main() {
 
     test("convert 19 bytes", () {
       final input = [
-        1,
-        2,
-        3,
-        4,
-        5,
-        6,
-        7,
-        8,
-        9,
-        10,
-        11,
-        12,
-        13,
-        14,
-        15,
-        16,
-        17,
-        18,
-        19
+        // Bytes
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+        16, 17, 18, 19,
       ];
       final output = const DebugHexEncoder().convert(input);
       expect(output, equals("""
@@ -60,46 +58,14 @@ void main() {
 
     test("convert 19 bytes with expectation", () {
       final input = [
-        1,
-        2,
-        3,
-        4,
-        5,
-        6,
-        7,
-        8,
-        9,
-        10,
-        11,
-        12,
-        13,
-        14,
-        15,
-        16,
-        17,
-        18,
-        19
+        // Bytes
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
+        18, 19,
       ];
       final expected = [
-        1,
-        2,
-        3,
-        4,
-        5,
-        6,
-        7,
-        8,
-        9,
-        10,
-        11,
-        12,
-        13,
-        14,
-        15,
-        16,
-        17,
-        18,
-        19
+        //Values
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+        16, 17, 18, 19
       ];
       final output = const DebugHexEncoder().convert(input, expected: expected);
       expect(output, equals("""
@@ -115,46 +81,14 @@ void main() {
 
     test("convert 19 bytes with expectation and wrong bytes", () {
       final input = [
-        1,
-        2,
-        0xEE,
-        4,
-        5,
-        0x0F,
-        7,
-        8,
-        9,
-        10,
-        11,
-        12,
-        13,
-        14,
-        15,
-        16,
-        17,
-        18,
-        19
+        // Bytes
+        1, 2, 0xEE, 4, 5, 0x0F, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+        16, 17, 18, 19,
       ];
       final expected = [
-        1,
-        2,
-        3,
-        4,
-        5,
-        6,
-        7,
-        8,
-        9,
-        10,
-        11,
-        12,
-        13,
-        14,
-        15,
-        16,
-        17,
-        18,
-        19
+        // Bytes
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+        16, 17, 18, 19
       ];
       final output = const DebugHexEncoder().convert(input, expected: expected);
       expect(
@@ -163,7 +97,7 @@ void main() {
             """
 
 0x0000: 0102 ee04  050f 0708  090a 0b0c  0d0e 0f10
-    (0)      ^^      ^^                             <-- index of the first error: 0x2 (decimal: 2)
+    (0)      ^^      ^^                             <-- index of the first problem: 0x2 (decimal: 2)
              03      06
 
 0x0010: 1112 13
@@ -190,34 +124,11 @@ void main() {
       expect(
           output,
           byteListEquals(const <int>[
-            0x01,
-            0x23,
-            0x45,
-            0x67,
-            0x89,
-            0xab,
-            0xcd,
-            0xef,
-            0x12,
-            0x34,
-            0x56,
-            0x78,
-            0x9a,
-            0xbc,
-            0xde,
-            0xf0,
-            0x01,
-            0x23,
-            0x45,
-            0x67,
-            0x89,
-            0xab,
-            0xcd,
-            0xef,
-            0x01,
-            0x23,
-            0x45,
-            0x67,
+            // Bytes
+            0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
+            0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0,
+            0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef,
+            0x01, 0x23, 0x45, 0x67,
           ]));
     });
   });

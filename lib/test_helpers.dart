@@ -1,3 +1,17 @@
+// Copyright 2019 dart-raw authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 library raw_test;
 
 import 'package:matcher/matcher.dart';
@@ -7,20 +21,20 @@ import 'raw.dart';
 /// Returns a matcher that matches integers with the bytes.
 /// Uses [DebugHexEncoder] for describing problems.
 Matcher byteListEquals(Iterable<int> expected, {DebugHexEncoder format}) {
-  return new _ByteListEquals(expected.toList(), format: format);
+  return _ByteListEquals(expected.toList(), format: format);
 }
 
-/// Returns a matcher that matches [SelfEncoder] with another .
+/// Returns a matcher that matches [RawEncodable] with another .
 /// Uses [DebugHexEncoder] for describing problems.
-Matcher selfEncoderEquals(SelfEncoder expected, {DebugHexEncoder format}) {
-  return new _SelfEncoderEquals(expected, format: format);
+Matcher selfEncoderEquals(RawEncodable expected, {DebugHexEncoder format}) {
+  return _SelfEncoderEquals(expected, format: format);
 }
 
-/// Returns a matcher that matches [SelfEncoder] with the bytes.
+/// Returns a matcher that matches [RawEncodable] with the bytes.
 /// Uses [DebugHexEncoder] for describing problems.
 Matcher selfEncoderEqualsBytes(Iterable<int> expected,
     {DebugHexEncoder format}) {
-  return new _SelfEncoderEquals(new RawData(expected.toList()), format: format);
+  return _SelfEncoderEquals(RawData(expected.toList()), format: format);
 }
 
 class _ByteListEquals extends Matcher {
@@ -70,9 +84,9 @@ class _SelfEncoderEquals extends Matcher {
   final _ByteListEquals _equals;
   final Matcher _fallbackEquals;
 
-  _SelfEncoderEquals(SelfEncoder expected, {DebugHexEncoder format})
+  _SelfEncoderEquals(RawEncodable expected, {DebugHexEncoder format})
       : this._equals =
-            new _ByteListEquals(expected.toImmutableBytes(), format: format),
+            _ByteListEquals(expected.toUint8ListViewOrCopy(), format: format),
         this._fallbackEquals = equals(expected);
 
   @override
@@ -83,9 +97,9 @@ class _SelfEncoderEquals extends Matcher {
   @override
   Description describeMismatch(
       item, Description mismatchDescription, Map matchState, bool verbose) {
-    if (item is SelfEncoder) {
+    if (item is RawEncodable) {
       return _equals.describeMismatch(
-        item.toImmutableBytes(),
+        item.toUint8ListViewOrCopy(),
         mismatchDescription,
         matchState,
         verbose,
@@ -102,8 +116,8 @@ class _SelfEncoderEquals extends Matcher {
 
   @override
   bool matches(item, Map matchState) {
-    if (item is SelfEncoder) {
-      return _equals.matches(item.toImmutableBytes(), matchState);
+    if (item is RawEncodable) {
+      return _equals.matches(item.toUint8ListViewOrCopy(), matchState);
     } else {
       return _fallbackEquals.matches(item, matchState);
     }
