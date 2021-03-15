@@ -1,5 +1,5 @@
 name: raw
-version: 0.2.0
+version: 0.2.1
 author: terrier989 <terrier989@gmail.com>
 homepage: https://github.com/terrier989/dart-raw
 description: A package for writing, reading, and debugging binary data.
