@@ -8,15 +8,9 @@ import 'package:test/test.dart';
 void main() {
   group("RawReader:", () {
     group("numbers:", () {
-      int expected;
-      int expectedIndex;
-      RawReader reader;
-
-      tearDown(() {
-        expected = null;
-        expectedIndex = null;
-        reader = null;
-      });
+      late int expected;
+      late int expectedIndex;
+      late RawReader reader;
 
       /// Converts reader to little-endian.
       void littleEndian(int length) {

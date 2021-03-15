@@ -154,17 +154,15 @@ class RawWriter {
   }
 
   /// Writes bytes from [ByteData].
-  void writeByteData(ByteData value, [int index = 0, int writtenLength]) {
-    if (writtenLength == null) {
-      writtenLength = value.lengthInBytes - index;
-    }
-    ensureAvailableLength(writtenLength);
+  void writeByteData(ByteData value, [int index = 0, int? writtenLength]) {
+    var calculatedWrittenLength = writtenLength ?? value.lengthInBytes - index;
+    ensureAvailableLength(calculatedWrittenLength);
 
     final byteData = this._byteData;
     var bufferLength = this._length;
-    if (writtenLength >= _minLengthForUin32CopyMethod) {
+    if (calculatedWrittenLength >= _minLengthForUin32CopyMethod) {
       final hostEndian = Endian.host;
-      while (writtenLength >= 4) {
+      while (calculatedWrittenLength >= 4) {
         byteData.setUint32(
           bufferLength,
           value.getUint32(index, hostEndian),
@@ -172,20 +170,20 @@ class RawWriter {
         );
         bufferLength += 4;
         index += 4;
-        writtenLength -= 4;
+        calculatedWrittenLength -= 4;
       }
     }
-    while (writtenLength > 0) {
+    while (calculatedWrittenLength > 0) {
       byteData.setUint8(bufferLength, value.getUint8(index));
       bufferLength++;
       index++;
-      writtenLength--;
+      calculatedWrittenLength--;
     }
     this._length = bufferLength;
   }
 
   /// Writes bytes from a list.
-  void writeBytes(List<int> value, [int index = 0, int writtenLength]) {
+  void writeBytes(List<int> value, [int index = 0, int? writtenLength]) {
     if (writtenLength == null) {
       writtenLength = value.length - index;
     }
@@ -307,10 +305,10 @@ class RawWriter {
 
   /// Writes an UTF-8 string.
   /// Returns number of written bytes.
-  int writeUtf8(String value, {int maxLengthInBytes}) {
+  int writeUtf8(String value, {int? maxLengthInBytes}) {
     // Write until the first multi-byte rune.
     final multiByteRuneIndex = _writeUtf8Simple(value);
-    if (multiByteRuneIndex<0) {
+    if (multiByteRuneIndex < 0) {
       // All runes were single-byte.
       return value.length;
     }
@@ -335,7 +333,7 @@ class RawWriter {
   /// Returns number of written bytes, including the final null-character.
   ///
   /// Throws [ArgumentError] if any rune is 0.
-  int writeUtf8NullEnding(String value, {int maxLengthInBytes}) {
+  int writeUtf8NullEnding(String value, {int? maxLengthInBytes}) {
     for (var i = 0; i < value.length; i++) {
       if (value.codeUnitAt(i) == 0) {
         throw new ArgumentError.value(value, "value", "contains null byte");
@@ -352,11 +350,12 @@ class RawWriter {
   /// Throws [ArgumentError] if any rune is greater than 127.
   void writeUtf8Simple(String value) {
     final multiByteRuneIndex = _writeUtf8Simple(value);
-    if (multiByteRuneIndex<0) {
+    if (multiByteRuneIndex < 0) {
       // All bytes were 0..127
       return;
     }
-    throw new ArgumentError.value(value, "value", "encountered a multi-byte rune at $multiByteRuneIndex");
+    throw new ArgumentError.value(
+        value, "value", "encountered a multi-byte rune at $multiByteRuneIndex");
   }
 
   /// Writes a null-delimited UTF-8 string.

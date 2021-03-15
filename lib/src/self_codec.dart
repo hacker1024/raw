@@ -125,5 +125,5 @@ class SelfEncoderEquality implements Equality<SelfEncoder> {
   }
 
   @override
-  bool isValidKey(Object o) => o is SelfEncoder;
+  bool isValidKey(Object? o) => o is SelfEncoder;
 }

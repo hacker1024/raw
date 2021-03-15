@@ -6,28 +6,28 @@ import 'raw.dart';
 
 /// Returns a matcher that matches integers with the bytes.
 /// Uses [DebugHexEncoder] for describing problems.
-Matcher byteListEquals(Iterable<int> expected, {DebugHexEncoder format}) {
+Matcher byteListEquals(Iterable<int> expected, {DebugHexEncoder? format}) {
   return new _ByteListEquals(expected.toList(), format: format);
 }
 
 /// Returns a matcher that matches [SelfEncoder] with another .
 /// Uses [DebugHexEncoder] for describing problems.
-Matcher selfEncoderEquals(SelfEncoder expected, {DebugHexEncoder format}) {
+Matcher selfEncoderEquals(SelfEncoder expected, {DebugHexEncoder? format}) {
   return new _SelfEncoderEquals(expected, format: format);
 }
 
 /// Returns a matcher that matches [SelfEncoder] with the bytes.
 /// Uses [DebugHexEncoder] for describing problems.
 Matcher selfEncoderEqualsBytes(Iterable<int> expected,
-    {DebugHexEncoder format}) {
+    {DebugHexEncoder? format}) {
   return new _SelfEncoderEquals(new RawData(expected.toList()), format: format);
 }
 
 class _ByteListEquals extends Matcher {
-  final List _expected;
+  final List<int> _expected;
   final DebugHexEncoder format;
 
-  _ByteListEquals(this._expected, {DebugHexEncoder format})
+  _ByteListEquals(this._expected, {DebugHexEncoder? format})
       : this.format = format ?? const DebugHexEncoder();
 
   @override
@@ -70,7 +70,7 @@ class _SelfEncoderEquals extends Matcher {
   final _ByteListEquals _equals;
   final Matcher _fallbackEquals;
 
-  _SelfEncoderEquals(SelfEncoder expected, {DebugHexEncoder format})
+  _SelfEncoderEquals(SelfEncoder expected, {DebugHexEncoder? format})
       : this._equals =
             new _ByteListEquals(expected.toImmutableBytes(), format: format),
         this._fallbackEquals = equals(expected);

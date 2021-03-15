@@ -64,7 +64,7 @@ class RawReader {
   ///
   /// If `maxLength` is null, throws [RawReaderException] if zero is not found.
   /// Otherwise returns `maxLength if zero is not found.
-  int lengthUntilZero({int maxLength}) {
+  int lengthUntilZero({int? maxLength}) {
     final byteData = this._byteData;
     final start = this.index;
     int end;
@@ -135,7 +135,7 @@ class RawReader {
   /// Otherwise the method will return a view at the bytes.
   ///
   /// Increments index by `length`.
-  ByteData readByteDataViewOrCopy(int length) {
+  ByteData readByteDataViewOrCopy(int? length) {
     if (length == null) {
       length = availableLengthInBytes;
     } else if (length > _byteData.lengthInBytes - index) {
@@ -287,7 +287,7 @@ class RawReader {
 
   /// Returns the next bytes. Length is determined by the argument.
   /// The method always returns a new copy of the bytes.
-  Uint8List readUint8ListCopy([int length]) {
+  Uint8List readUint8ListCopy([int? length]) {
     if (length == null) {
       length = availableLengthInBytes;
     } else if (length > _byteData.lengthInBytes - index) {
@@ -324,7 +324,7 @@ class RawReader {
   ///
   /// If [isCopyOnRead] is true, the method will return a new copy of the bytes.
   /// Otherwise the method will return a view at the bytes.
-  Uint8List readUint8ListViewOrCopy(int length) {
+  Uint8List readUint8ListViewOrCopy(int? length) {
     if (length == null) {
       length = availableLengthInBytes;
     } else if (length > _byteData.lengthInBytes - index) {
@@ -425,7 +425,7 @@ class RawReader {
     );
   }
 
-  RawReaderException _newException(String message, {int index}) {
+  RawReaderException _newException(String message, {int? index}) {
     index ??= this.index;
     var snippetStart = index - 16;
     if (snippetStart < 0) {
@@ -482,7 +482,7 @@ class RawReaderException implements Exception {
   final int snippetIndex;
 
   RawReaderException(this.message,
-      {this.index, this.snippet, this.snippetIndex});
+      {required this.index, required this.snippet, required this.snippetIndex});
 
   @override
   String toString() {

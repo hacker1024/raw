@@ -10,7 +10,7 @@ class RawData extends SelfEncoder {
 
   const RawData(this.bytes);
 
-  factory RawData.decode(RawReader reader, int length) {
+  factory RawData.decode(RawReader reader, int? length) {
     length ??= reader.availableLengthInBytes;
     if (length == 0) {
       return empty;

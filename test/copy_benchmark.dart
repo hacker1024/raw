@@ -1,5 +1,6 @@
-import 'package:benchmark_harness/benchmark_harness.dart';
 import 'dart:typed_data';
+
+import 'package:benchmark_harness/benchmark_harness.dart';
 import 'package:raw/raw.dart';
 
 void main() {
@@ -21,8 +22,8 @@ class CopyBenchmark extends BenchmarkBase {
   final int destinationIndex;
   final int sourceIndex;
   final int length;
-  Uint8List _source;
-  RawWriter _destination;
+  late Uint8List _source;
+  late RawWriter _destination;
 
   CopyBenchmark(this.destinationIndex, this.sourceIndex, this.length)
       : super(
@@ -42,9 +43,6 @@ class CopyBenchmark extends BenchmarkBase {
 
   @override
   void run() {
-    // Set initial index
-    _destination.index = destinationIndex;
-
     for (var i = 0; i < times; i++) {
       // Copy from source to destination
       _destination.writeBytes(_source, sourceIndex, length);
