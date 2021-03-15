@@ -151,7 +151,7 @@ class RawReader {
   ///
   /// If reading fails, the method throws [RawReaderException].
   /// If reading succeeds, the method increments [index] by `length`.
-  ByteData readByteDataViewOrCopy(int length) {
+  ByteData readByteDataViewOrCopy(int? length) {
     if (length == null) {
       length = availableLength;
     } else if (length > _byteData.lengthInBytes - index) {
@@ -330,7 +330,7 @@ class RawReader {
   ///
   /// If reading fails, the method throws [RawReaderException].
   /// If reading succeeds, the method increments [index] by `length`.
-  Uint8List readUint8List(int length) {
+  Uint8List readUint8List(int? length) {
     if (length == null) {
       length = availableLength;
     } else if (length > _byteData.lengthInBytes - index) {
@@ -368,7 +368,7 @@ class RawReader {
   ///
   /// If reading fails, the method throws [RawReaderException].
   /// If reading succeeds, the method increments [index] by `length`.
-  Uint8List readUint8ListViewOrCopy(int length) {
+  Uint8List readUint8ListViewOrCopy(int? length) {
     if (length == null) {
       length = availableLength;
     } else if (length > _byteData.lengthInBytes - index) {
