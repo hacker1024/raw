@@ -1,21 +1,16 @@
+import 'dart:typed_data';
+
+import 'package:fixnum/fixnum.dart';
 import 'package:raw/raw.dart';
 import 'package:raw/test_helpers.dart';
 import 'package:test/test.dart';
-import 'dart:typed_data';
-import 'package:fixnum/fixnum.dart';
 
 void main() {
   group("RawReader:", () {
     group("numbers:", () {
-      int expected;
-      int expectedIndex;
-      RawReader reader;
-
-      tearDown(() {
-        expected = null;
-        expectedIndex = null;
-        reader = null;
-      });
+      late int expected;
+      late int expectedIndex;
+      late RawReader reader;
 
       /// Converts reader to little-endian.
       void littleEndian(int length) {

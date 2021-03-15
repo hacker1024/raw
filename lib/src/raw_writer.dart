@@ -21,7 +21,7 @@ class RawWriter {
   ByteData get byteData => _byteData;
 
   /// Returns a view at the buffer.
-  ByteData bufferAsByteData([int index = 0, int length]) {
+  ByteData bufferAsByteData([int index = 0, int? length]) {
     if (index == 0 && length == null) {
       return _byteData;
     }
@@ -32,7 +32,7 @@ class RawWriter {
   }
 
   /// Returns a view at the buffer.
-  Uint8List bufferAsUint8List([int index = 0, int length]) {
+  Uint8List bufferAsUint8List([int index = 0, int? length]) {
     final byteData = this._byteData;
     length ??= byteData.lengthInBytes - index;
     return new Uint8List.view(
@@ -107,54 +107,61 @@ class RawWriter {
   }
 
   /// Fills a [ByteData] span with the [ByteData] span.
-  void writeByteData(ByteData value, [int index = 0, int length]) {
+  void writeByteData(ByteData value, [int index = 0, int? length]) {
     final maxLength = value.lengthInBytes - index;
+    int calculatedLength;
     if (length == null) {
-      length = maxLength;
+      calculatedLength = maxLength;
     } else if (length > maxLength) {
       throw new ArgumentError.value(length, "length");
+    } else {
+      calculatedLength = length;
     }
-    ensureAvailableLength(length);
+    ensureAvailableLength(calculatedLength);
 
     final byteData = this.byteData;
     var byteDataIndex = this.index;
-    if (length >= _minLengthForUin32CopyMethod) {
+    if (calculatedLength >= _minLengthForUin32CopyMethod) {
       final hostEndian = Endian.host;
-      while (length >= 4) {
+      while (calculatedLength >= 4) {
         byteData.setUint32(
             byteDataIndex, value.getUint32(index, hostEndian), hostEndian);
         byteDataIndex += 4;
         index += 4;
-        length -= 4;
+        calculatedLength -= 4;
       }
     }
-    while (length > 0) {
+    while (calculatedLength > 0) {
       byteData.setUint8(byteDataIndex, value.getUint8(index));
       byteDataIndex++;
       index++;
-      length--;
+      calculatedLength--;
     }
     this.index = byteDataIndex;
   }
 
   /// Fills a [ByteData] span with the byte list span.
-  void writeBytes(List<int> value, [int index = 0, int length]) {
+  void writeBytes(List<int> value, [int index = 0, int? length]) {
     final maxLength = value.length - index;
+    int calculatedLength;
     if (length == null) {
-      length = maxLength;
+      calculatedLength = maxLength;
     } else if (length > maxLength) {
       throw new ArgumentError.value(length, "length");
+    } else {
+      calculatedLength = length;
     }
-    if (length >= _minLengthForUin32CopyMethod && value is Uint8List) {
+    if (calculatedLength >= _minLengthForUin32CopyMethod &&
+        value is Uint8List) {
       writeByteData(
           new ByteData.view(value.buffer, value.offsetInBytes + index, length));
       return;
     }
-    ensureAvailableLength(length);
+    ensureAvailableLength(calculatedLength);
 
     final byteData = this.byteData;
     var byteDataIndex = this.index;
-    for (final end = index + length; index < end; index++) {
+    for (final end = index + calculatedLength; index < end; index++) {
       byteData.setUint8(byteDataIndex, value[index]);
       byteDataIndex++;
     }
@@ -219,7 +226,7 @@ class RawWriter {
 
   /// Writes a safe latin string.
   /// Returns number of written bytes.
-  int writeSafeLatin(String value, {int maxLengthInBytes}) {
+  int writeSafeLatin(String value, {int? maxLengthInBytes}) {
     if (maxLengthInBytes != null && value.length >= maxLengthInBytes) {
       throw new ArgumentError.value(
         value,
@@ -273,7 +280,7 @@ class RawWriter {
 
   /// Writes an UTF-8 string.
   /// Returns number of written bytes.
-  int writeUtf8(String value, {int maxLengthInBytes}) {
+  int writeUtf8(String value, {int? maxLengthInBytes}) {
     if (maxLengthInBytes != null && value.length >= maxLengthInBytes) {
       throw new ArgumentError.value(
         value,
@@ -296,7 +303,7 @@ class RawWriter {
 
   /// Writes an UTF-8 string.
   /// Returns number of written bytes, including the final null-character.
-  int writeUtf8NullEnding(String value, {int maxLengthInBytes}) {
+  int writeUtf8NullEnding(String value, {int? maxLengthInBytes}) {
     for (var i = 0; i < value.length; i++) {
       if (value.codeUnitAt(i) == 0) {
         throw new ArgumentError.value(value, "value", "contains null byte");

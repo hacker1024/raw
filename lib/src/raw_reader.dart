@@ -10,7 +10,7 @@ class RawReader {
   final bool isCopyOnRead;
   final ByteData _byteData;
   int index;
-  final RawAnnotator annotator;
+  final RawAnnotator? annotator;
 
   RawReader.withByteData(
     this._byteData, {
@@ -20,7 +20,7 @@ class RawReader {
   });
 
   factory RawReader.withBytes(List<int> bytes,
-      {RawAnnotator annotator, bool isCopyOnRead: true}) {
+      {RawAnnotator? annotator, bool isCopyOnRead: true}) {
     ByteData byteData;
     if (bytes is Uint8List) {
       // Use existing buffer
@@ -51,7 +51,7 @@ class RawReader {
   bool get isEndOfBytes => index == _byteData.lengthInBytes;
 
   /// Returns a view at the buffer.
-  ByteData bufferAsByteData([int index = 0, int length]) {
+  ByteData bufferAsByteData([int index = 0, int? length]) {
     if (index == 0 && length == null) {
       return _byteData;
     }
@@ -62,7 +62,7 @@ class RawReader {
   }
 
   /// Returns a view at the buffer.
-  Uint8List bufferAsUint8List([int index = 0, int length]) {
+  Uint8List bufferAsUint8List([int index = 0, int? length]) {
     final byteData = this._byteData;
     length ??= byteData.lengthInBytes - index;
     return new Uint8List.view(
@@ -70,7 +70,7 @@ class RawReader {
   }
 
   /// Returns the number of bytes before the next zero byte.
-  int lengthUntilZero({int maxLength}) {
+  int lengthUntilZero({int? maxLength}) {
     final byteData = this._byteData;
     final start = this.index;
     maxLength ??= _byteData.lengthInBytes - start;
@@ -105,7 +105,7 @@ class RawReader {
   }
 
   /// Reads a null-terminated ASCII string.
-  String readAsciiNullEnding({int maxLength}) {
+  String readAsciiNullEnding({int? maxLength}) {
     final length = lengthUntilZero(maxLength: maxLength);
     return readAscii(length);
   }
@@ -142,7 +142,7 @@ class RawReader {
   ///
   /// If [isCopyOnRead] is true, the method will return a new copy of the bytes.
   /// Otherwise the method will return a view at the bytes.
-  ByteData readByteDataViewOrCopy(int length) {
+  ByteData readByteDataViewOrCopy(int? length) {
     final byteData = this._byteData;
     final index = this.index;
     if (length == null) {
@@ -256,7 +256,7 @@ class RawReader {
 
   /// Returns the next bytes. Length is determined by the argument.
   /// The method always returns a new copy of the bytes.
-  Uint8List readUint8ListCopy([int length]) {
+  Uint8List readUint8ListCopy([int? length]) {
     if (length == null) {
       length = availableLengthInBytes;
     } else if (length > _byteData.lengthInBytes - index) {
@@ -293,7 +293,7 @@ class RawReader {
   ///
   /// If [isCopyOnRead] is true, the method will return a new copy of the bytes.
   /// Otherwise the method will return a view at the bytes.
-  Uint8List readUint8ListViewOrCopy(int length) {
+  Uint8List readUint8ListViewOrCopy(int? length) {
     final index = this.index;
     if (index < 0 || index > _byteData.lengthInBytes) {
       throw new ArgumentError.value(index, "index");

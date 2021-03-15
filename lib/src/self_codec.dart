@@ -63,7 +63,7 @@ abstract class SelfEncoder {
 
   /// Shorthand for converting the value to bytes.
   /// The returned list must not be mutated.
-  List<int> toImmutableBytes() {
+  Uint8List toImmutableBytes() {
     final maxLength = encodedMaxLength();
     final writer = new RawWriter.withCapacity(maxLength);
     encodeSelf(writer);
@@ -123,5 +123,5 @@ class SelfEncoderEquality implements Equality<SelfEncoder> {
   }
 
   @override
-  bool isValidKey(Object o) => o is SelfEncoder;
+  bool isValidKey(Object? o) => o is SelfEncoder;
 }

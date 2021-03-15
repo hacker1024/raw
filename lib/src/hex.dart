@@ -39,7 +39,7 @@ class DebugHexDecoder extends Converter<String, Uint8List> {
         line = line.substring(match.end);
       }
 
-      int firstGroupLength;
+      int? firstGroupLength;
 
       // For each hexadecimal digit group
       while (true) {
@@ -48,7 +48,7 @@ class DebugHexDecoder extends Converter<String, Uint8List> {
         if (match == null) {
           break;
         }
-        final group = match.group(1);
+        final group = match.group(1)!;
         line = line.substring(match.end);
 
         // Validate group length
@@ -120,7 +120,7 @@ class DebugHexEncoder extends Converter<Iterable, String> {
 
   const DebugHexEncoder({this.bytesPerRow: 16, this.groups: const [2, 4]});
 
-  String convert(Iterable iterable, {List<int> expected}) {
+  String convert(Iterable iterable, {List<int>? expected}) {
     if (iterable.isEmpty && expected == null) {
       return "(no bytes)";
     }
@@ -161,7 +161,7 @@ class DebugHexEncoder extends Converter<Iterable, String> {
 
       // Print markings
       var printExpectedBytes = false;
-      int firstAt;
+      int? firstAt;
       final lineSb = new StringBuffer();
       for (var i = start; i < end; i++) {
         lineSb.write(getSpaceBefore(i));

@@ -42,7 +42,7 @@ class ByteDataEquality implements Equality<ByteData> {
   }
 
   @override
-  bool isValidKey(Object o) {
+  bool isValidKey(Object? o) {
     return o is ByteData;
   }
 }
