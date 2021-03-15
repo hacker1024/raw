@@ -1,5 +1,5 @@
-import 'package:test/test.dart';
 import 'package:raw/raw.dart';
+import 'package:test/test.dart';
 
 void main() {
   test("extractUint32bits", () {

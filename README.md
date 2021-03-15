@@ -1,13 +1,29 @@
 # Introduction
-A package for writing, reading, and debuggging binary data.
+A package for writing, reading, and debugging binary data.
+
 
 ## Issues & contributing
   * Found a bug? Create an issue [in Github](https://github.com/terrier989/dart-raw/issues).
-  * Contributing code? Create a pull request [in Github](https://github.com/terrier989/dart-raw/issues).
+  * Contributing code? Create a pull request [in Github](https://github.com/terrier989/dart-raw).
 
-## Features
-### Create "struct-like" classes
 
+# A walkthrough
+## Key classes
+  * [RawWriter](https://pub.dartlang.org/documentation/raw/latest/raw/RawWriter-class.html):
+    * Writes bytes to a buffer.
+    * Automatically expands the buffer when `isExpanding` is true.
+  * [RawReader](https://pub.dartlang.org/documentation/raw/latest/raw/RawReader-class.html):
+    * Reads bytes from a buffer.
+    * If reading fails, throw descriptive exceptions.
+  * [SelfEncoder](https://pub.dartlang.org/documentation/raw/latest/raw/SelfEncoder-class.html)
+    * Classes that know how to encode state using _RawWriter_.
+  * [SelfDecoder](https://pub.dartlang.org/documentation/raw/latest/raw/SelfDecoder-class.html)
+    * Classes that know how to decode state using _RawReader_.
+  * [SelfCodec](https://pub.dartlang.org/documentation/raw/latest/raw/SelfCodec-class.html)
+    * Classes that implement both _SelfEncoder_ and _SelfDecoder_.
+
+## Example of SelfCodec
+A typical implementation of _SelfCodec_ looks like this:
 ```dart
 class MyStruct extends SelfCodec {
   int intField = 0;
@@ -29,31 +45,30 @@ class MyStruct extends SelfCodec {
 }
 ```
 
-### Supported primitives
-The following data types are supported:
-  * Fixed-length types
+## Supported primitives
+  * Numeric types
     * Unsigned/signed integers
-      * `uint8` / `int8`
-      * `uint16` / `int16`
-      * `uint32` / `int32`
+      * `Uint8` / `Int8`
+      * `Uint16` / `Int16`
+      * `Uint32` / `Int32`
+      * `FixInt64` / `FixInt64` (_Int64_ from [fixnum](https://pub.dartlang.org/packages/fixnum))
     * Floating- point values
-      * `float32`
-      * `float64`
-    * Variable-length integers
+      * `Float32`
+      * `Float64`
+    * Variable-length integers (identical with [Protocol Buffers encoding](https://developers.google.com/protocol-buffers/docs/encoding))
       * `VarUint`
       * `VarInt`
-  * Variable-length types
-      * List<int>
-      * ByteData
-      * Strings
-        * `Utf8` / `Utf8NullEnding`
-  * Zeroes
+  * Sequence types
+    * Uint8List
+    * ByteData
+    * Strings
+      * `Utf8` / `Utf8NullEnding`
+      * `Utf8Simple` / `Utf8SimpleNullEnding`
+        * Validates that every byte is less than 128.
+    * Zeroes
 
-### Helpers for testing
-Library _"package:raw/test_helpers.dart"_ contains matchers that use _DebugHexEncoder_.
 
-#### byteListEquals
-
+## Helpers for testing
 ```dart
 import 'package:test/test.dart';
 import 'package:raw/raw_test.dart';
@@ -72,7 +87,7 @@ void main() {
 }
 ```
 
-#### selfEncoderEquals
+If your class implements _SelfEncoder_, use _selfEncoderEquals_:
 
 ```dart
 class MyStruct extends SelfCodec {
@@ -81,25 +96,24 @@ class MyStruct extends SelfCodec {
 
 void main() {
   test("an example", () {
-    final value = new MyStruct();
-    final expected = [
-      // ...
-    ];
-    expect(alue, selfEncoderEquals(expected));
+    // ...
+    expect(myStruct, selfEncoderEquals(expected));
   });
 }
 ```
 
-### Hex support
-#### DebugHexDecoder
 
-_DebugHexDecoder_ is able to import hex formats such as:
+## Converting hex formats to bytes
+
+[DebugHexDecoder](https://pub.dartlang.org/documentation/raw/latest/raw/DebugHexDecoder-class.html) is able to import hex formats such as:
   * "0000000: 0123 4567 89ab cdef 0123 4567 89ab cdef ................"
   * "0000010: 012345678 ............ # comment"
   * "012345678abcdef // no prefix"
 
-#### DebugHexEncoder
-_DebugHexEncoder_ converts bytes to the following format:
+
+## Converting bytes to hex-based descriptions
+
+[DebugHexEncoder](https://pub.dartlang.org/documentation/raw/latest/raw/DebugHexEncoder-class.html) converts bytes to the following format:
 ```
 0x0000: 0123 4567 89ab cdef  0123 4567 89ab cdef
     (0)

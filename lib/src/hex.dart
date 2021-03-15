@@ -20,7 +20,7 @@ class DebugHexDecoder extends Converter<String, Uint8List> {
     r"^\s*(?:0x)?[0-9a-fA-F]+:\s+",
   );
   static final RegExp _hexRegExp = new RegExp(
-    r"^([0-9a-f-AF]+)(?:\s+|$)",
+    r"^(?:0x)?([0-9a-f-AF]+),?(?:\s+|$)",
   );
 
   const DebugHexDecoder();
@@ -94,9 +94,9 @@ class DebugHexDecoder extends Converter<String, Uint8List> {
   }
 }
 
-/// Returns the bytes as a human-friendly hexadecimal string.
+/// Converts bytes to a hex-based descriptions.
 ///
-/// Returns bytes in the following format:
+/// By default, converts bytes to the following format:
 /// ```
 /// 0x0000: 0123 4567 89ab cdef  0123 4567 89ab cdef
 ///     (0)
@@ -104,7 +104,7 @@ class DebugHexDecoder extends Converter<String, Uint8List> {
 ///    (16)
 /// ```
 ///
-/// If `expected` is specified, returns bytes in the following format:
+/// If optional parameter `expected` is given, the format is:
 ///
 /// ```
 /// 0x0000: 0123 5555 89ab cdef  0123 4567 89ab cdef
@@ -118,7 +118,7 @@ class DebugHexEncoder extends Converter<Iterable, String> {
   final int bytesPerRow;
   final List<int> groups;
 
-  const DebugHexEncoder({this.bytesPerRow: 16, this.groups: const [2, 4]});
+  const DebugHexEncoder({this.bytesPerRow = 16, this.groups = const [2, 4]});
 
   String convert(Iterable iterable, {List<int> expected}) {
     if (iterable.isEmpty && expected == null) {

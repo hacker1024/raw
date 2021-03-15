@@ -5,95 +5,70 @@ import 'package:collection/collection.dart';
 import 'raw_reader.dart';
 import 'raw_writer.dart';
 
-/// Anything that implements both [SelfEncoder] and [SelfDecoder].
+/// Something that implements both [SelfEncoder] and [SelfDecoder].
 abstract class SelfCodec extends SelfEncoder with SelfDecoder {}
 
+/// Something that can decode itself using [RawReader].
 abstract class SelfDecoder {
   /// Decodes state from the bytes.
-  /// Existing state should be discarded.
   void decodeSelf(RawReader reader);
 
-  /// Decodes state from the value.
-  /// Returned boolean tells whether the operation succeeded.
-  bool decodeSelfFromObject(Object value) {
-    if (value is SelfEncoder) {
-      final byteData = value.toImmutableByteData();
-      final reader = new RawReader.withByteData(byteData);
-      try {
-        decodeSelf(reader);
-      } catch (e) {
-        return false;
-      }
-      if (!reader.isEndOfBytes) {
-        return false;
-      }
-      return true;
-    } else {
-      throw new ArgumentError.value(value, "value", "could not be encoded");
-    }
+  /// Decodes state from the SelfEncoder.
+  void decodeSelfFromSelfEncoder(SelfEncoder value) {
+    final byteData = value.toImmutableByteData();
+    final reader = new RawReader.withByteData(byteData);
+    decodeSelf(reader);
   }
 }
 
+/// Something that can encode itself using [RawWriter].
 abstract class SelfEncoder {
   const SelfEncoder();
 
+  /// Determines hash by serializing this value.
   @override
   int get hashCode => const SelfEncoderEquality().hash(this);
 
+  /// Determines equality by serializing both values.
   @override
   bool operator ==(other) {
     return other is SelfEncoder &&
         const SelfEncoderEquality().equals(this, other);
   }
 
-  int encodedLength() => toImmutableBytes().length;
-
-  int encodedMaxLength();
-
-  /// Encode serialization of the value to the [ByteData].
-  /// Returns index after writing bytes.
+  /// Encodes this object.
   void encodeSelf(RawWriter writer);
 
-  ByteData toImmutableByteData() {
-    final maxLength = encodedMaxLength();
-    final writer = new RawWriter.withCapacity(maxLength);
+  /// Returns an estimate of the maximum number of bytes needed to encode this
+  /// value.
+  int encodeSelfCapacity() => 64;
+
+  /// Returns an immutable encoding of this value.
+  ByteData toImmutableByteData() => toMutableByteData();
+
+  /// Returns an immutable encoding of this value.
+  List<int> toImmutableBytes() => toMutableBytes();
+
+  /// Returns a mutable encoding of this value.
+  ByteData toMutableByteData() {
+    final capacity = encodeSelfCapacity();
+    final writer = new RawWriter.withCapacity(capacity);
     encodeSelf(writer);
     return writer.toByteDataView();
   }
 
-  /// Shorthand for converting the value to bytes.
-  /// The returned list must not be mutated.
-  List<int> toImmutableBytes() {
-    final maxLength = encodedMaxLength();
-    final writer = new RawWriter.withCapacity(maxLength);
+  /// Returns a mutable encoding of this value.
+  List<int> toMutableBytes() {
+    final capacity = encodeSelfCapacity();
+    final writer = new RawWriter.withCapacity(capacity);
     encodeSelf(writer);
     return writer.toUint8ListView();
   }
-
-  @override
-  String toString() {
-    Uint8List bytes;
-    try {
-      bytes = toImmutableBytes();
-    } catch (e) {
-      return super.toString();
-    }
-    if (bytes.length > 255) {
-      return super.toString();
-    }
-    final result = new StringBuffer();
-    for (var i = 0; i < result.length; i++) {
-      if (i % 4 == 0 && i > 0) {
-        result.write(":");
-      }
-      final byte = bytes[i];
-      result.write((byte >> 4).toRadixString(16));
-      result.write((0xF & byte).toRadixString(16));
-    }
-    return result.toString();
-  }
 }
 
+/// Equality for [SelfEncoder].
+///
+/// Used by '==' and 'hashCode' in [SelfEncoder].
 class SelfEncoderEquality implements Equality<SelfEncoder> {
   const SelfEncoderEquality();
 
@@ -114,12 +89,39 @@ class SelfEncoderEquality implements Equality<SelfEncoder> {
 
   @override
   int hash(SelfEncoder e) {
-    final bytes = e.toImmutableBytes();
-    var result = 0;
-    for (var i = 0; i < bytes.length; i++) {
-      result ^= bytes[i] << ((i * 7) % 24);
+    final bytes = e.toImmutableByteData();
+    const mask = 0x7FFFFFFF;
+
+    var h = 0;
+    var i = 0;
+    while (true) {
+      int value = 0;
+      if (i + 3 < bytes.lengthInBytes) {
+        value = bytes.getUint32(i, Endian.little);
+        i += 4;
+      } else if (i < bytes.lengthInBytes) {
+        value = 0;
+        var shift = 0;
+        do {
+          value |= bytes.getUint8(i) << shift;
+          i++;
+          shift += 8;
+        } while (i < bytes.lengthInBytes);
+      } else {
+        break;
+      }
+      final a = 0xFF & (value >> 24);
+      final b = 0xFF & (value >> 16);
+      final c = 0xFF & (value >> 8);
+      final d = 0xFF & value;
+      h = mask & (h ^ value);
+      h = mask & ((((h * 11 + a) * 13 + b) * 17 + c) * 19 + d);
+      h = mask & ((h >> 19) | (h << 13));
+      h = mask & (h ^ value);
+      h = mask & ((((h * 13 + a) * 17 + b) * 19 + c) * 23 + d);
     }
-    return result;
+    h ^= bytes.lengthInBytes;
+    return h;
   }
 
   @override

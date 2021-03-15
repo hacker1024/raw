@@ -2,25 +2,26 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:fixnum/fixnum.dart';
+import 'package:raw/raw.dart' show DebugHexEncoder;
 
-import 'raw_annotator.dart';
 import 'raw_writer.dart';
 
 class RawReader {
+  /// Whether returned typed data slices should be copies.
   final bool isCopyOnRead;
+
   final ByteData _byteData;
+
+  /// Current index in the buffer.
   int index;
-  final RawAnnotator annotator;
 
   RawReader.withByteData(
     this._byteData, {
     this.index: 0,
     this.isCopyOnRead: true,
-    this.annotator,
   });
 
-  factory RawReader.withBytes(List<int> bytes,
-      {RawAnnotator annotator, bool isCopyOnRead: true}) {
+  factory RawReader.withBytes(List<int> bytes, {bool isCopyOnRead = true}) {
     ByteData byteData;
     if (bytes is Uint8List) {
       // Use existing buffer
@@ -39,7 +40,6 @@ class RawReader {
     }
     return new RawReader.withByteData(
       byteData,
-      annotator: annotator,
       isCopyOnRead: isCopyOnRead,
     );
   }
@@ -47,40 +47,41 @@ class RawReader {
   /// Returns the number of bytes remaining.
   int get availableLengthInBytes => _byteData.lengthInBytes - index;
 
+  /// Returns the buffer as [ByteData].
+  ByteData get bufferAsByteData => _byteData;
+
+  /// Returns the buffer as [Uint8List].
+  Uint8List get bufferAsUint8List {
+    final byteData = this._byteData;
+    return Uint8List.view(
+        byteData.buffer, byteData.offsetInBytes, byteData.lengthInBytes);
+  }
+
   /// Returns true if there are no more bytes available.
   bool get isEndOfBytes => index == _byteData.lengthInBytes;
 
-  /// Returns a view at the buffer.
-  ByteData bufferAsByteData([int index = 0, int length]) {
-    if (index == 0 && length == null) {
-      return _byteData;
-    }
-    final byteData = this._byteData;
-    length ??= byteData.lengthInBytes - index;
-    return new ByteData.view(
-        byteData.buffer, byteData.offsetInBytes + index, length);
-  }
-
-  /// Returns a view at the buffer.
-  Uint8List bufferAsUint8List([int index = 0, int length]) {
-    final byteData = this._byteData;
-    length ??= byteData.lengthInBytes - index;
-    return new Uint8List.view(
-        byteData.buffer, byteData.offsetInBytes + index, length);
-  }
-
   /// Returns the number of bytes before the next zero byte.
+  ///
+  /// If `maxLength` is null, throws [RawReaderException] if zero is not found.
+  /// Otherwise returns `maxLength if zero is not found.
   int lengthUntilZero({int maxLength}) {
     final byteData = this._byteData;
     final start = this.index;
-    maxLength ??= _byteData.lengthInBytes - start;
-    final end = start + maxLength;
+    int end;
+    if (maxLength == null) {
+      end = _byteData.lengthInBytes;
+    } else {
+      end = start + maxLength;
+    }
     for (var i = start; i < end; i++) {
       if (byteData.getUint8(i) == 0) {
         return i - start;
       }
     }
-    return -1;
+    if (maxLength != null) {
+      return maxLength;
+    }
+    throw _eofException(start, "sequence of bytes terminated by zero");
   }
 
   /// Previews a future uint16 without advancing in the byte list.
@@ -98,20 +99,10 @@ class RawReader {
     return _byteData.getUint8(this.index + index);
   }
 
-  /// Reads an ASCII string.
-  String readAscii(int length) {
-    final bytes = readUint8ListViewOrCopy(length);
-    return new String.fromCharCodes(bytes);
-  }
-
-  /// Reads a null-terminated ASCII string.
-  String readAsciiNullEnding({int maxLength}) {
-    final length = lengthUntilZero(maxLength: maxLength);
-    return readAscii(length);
-  }
-
-  /// Returns the next bytes. Length is determined by the argument.
+  /// Returns the next `length` bytes.
   /// The method always returns a new copy of the bytes.
+  ///
+  /// Increments index by `length`.
   ByteData readByteDataCopy(int length) {
     final byteData = this._byteData;
     final result = new ByteData(length);
@@ -138,27 +129,22 @@ class RawReader {
     return result;
   }
 
-  /// Returns the next bytes. Length is determined by the argument.
+  /// Returns the next `length` bytes.
   ///
   /// If [isCopyOnRead] is true, the method will return a new copy of the bytes.
   /// Otherwise the method will return a view at the bytes.
+  ///
+  /// Increments index by `length`.
   ByteData readByteDataViewOrCopy(int length) {
-    final byteData = this._byteData;
-    final index = this.index;
     if (length == null) {
       length = availableLengthInBytes;
-    } else if (length > byteData.lengthInBytes - index) {
+    } else if (length > _byteData.lengthInBytes - index) {
       throw new ArgumentError.value(length, "length");
     }
     if (isCopyOnRead) {
       return readByteDataCopy(length);
     }
-    // We can return a view
-    return new ByteData.view(
-      byteData.buffer,
-      byteData.offsetInBytes + index,
-      length,
-    );
+    return _readByteDataView(length);
   }
 
   /// Reads a 64-bit signed integer as _Int64_ (from _'package:fixnum'_).
@@ -175,16 +161,26 @@ class RawReader {
   /// Reads a 32-bit floating-point value.
   /// Increments index by 4.
   double readFloat32([Endian endian = Endian.big]) {
+    final byteData = this._byteData;
     final index = this.index;
-    final value = _byteData.getFloat32(index, endian);
-    this.index = index + 4;
+    final newIndex = index + 4;
+    if (newIndex > byteData.lengthInBytes) {
+      throw _eofException(index, "float32");
+    }
+    final value = byteData.getFloat32(index, endian);
+    this.index = newIndex;
     return value;
   }
 
   /// Reads a 64-bit floating-point value.
   /// Increments index by 8.
   double readFloat64([Endian endian = Endian.big]) {
+    final byteData = this._byteData;
     final index = this.index;
+    final newIndex = index + 8;
+    if (newIndex > byteData.lengthInBytes) {
+      throw _eofException(index, "float64");
+    }
     final value = _byteData.getFloat64(index, endian);
     this.index = index + 8;
     return value;
@@ -193,7 +189,12 @@ class RawReader {
   /// Reads a 32-bit signed integer.
   /// Increments index by 2.
   int readInt16([Endian endian = Endian.big]) {
+    final byteData = this._byteData;
     final index = this.index;
+    final newIndex = index + 2;
+    if (newIndex > byteData.lengthInBytes) {
+      throw _eofException(index, "int16");
+    }
     final value = _byteData.getInt16(index, endian);
     this.index = index + 2;
     return value;
@@ -202,7 +203,12 @@ class RawReader {
   /// Reads a 32-it signed integer.
   /// Increments index by 4.
   int readInt32([Endian endian = Endian.big]) {
+    final byteData = this._byteData;
     final index = this.index;
+    final newIndex = index + 4;
+    if (newIndex > byteData.lengthInBytes) {
+      throw _eofException(index, "int32");
+    }
     final value = _byteData.getInt32(index, endian);
     this.index = index + 4;
     return value;
@@ -211,7 +217,12 @@ class RawReader {
   /// Reads an 8-bit signed integer.
   /// Increments index by 1.
   int readInt8() {
+    final byteData = this._byteData;
     final index = this.index;
+    final newIndex = index + 1;
+    if (newIndex > byteData.lengthInBytes) {
+      throw _eofException(index, "int8");
+    }
     final value = _byteData.getInt8(index);
     this.index = index + 1;
     return value;
@@ -221,8 +232,13 @@ class RawReader {
   RawReader readRawReader(int length) {
     final byteData = this._byteData;
     final index = this.index;
-    final result = new RawReader.withByteData(new ByteData.view(
-        byteData.buffer, byteData.offsetInBytes + index, length));
+    final result = new RawReader.withByteData(
+      new ByteData.view(
+        byteData.buffer,
+        byteData.offsetInBytes + index,
+        length,
+      ),
+    );
     this.index = index + length;
     return result;
   }
@@ -230,7 +246,12 @@ class RawReader {
   /// Reads a 16-bit unsigned integer.
   /// Increments index by 2.
   int readUint16([Endian endian = Endian.big]) {
+    final byteData = this._byteData;
     final index = this.index;
+    final newIndex = index + 2;
+    if (newIndex > byteData.lengthInBytes) {
+      throw _eofException(index, "uint16");
+    }
     final value = _byteData.getUint16(index, endian);
     this.index = index + 2;
     return value;
@@ -239,7 +260,12 @@ class RawReader {
   /// Reads a 32-bit unsigned integer.
   /// Increments index by 4.
   int readUint32([Endian endian = Endian.big]) {
+    final byteData = this._byteData;
     final index = this.index;
+    final newIndex = index + 4;
+    if (newIndex > byteData.lengthInBytes) {
+      throw _eofException(index, "uint32");
+    }
     final value = _byteData.getUint32(index, endian);
     this.index = index + 4;
     return value;
@@ -248,7 +274,12 @@ class RawReader {
   /// Reads an 8-bit unsigned integer.
   /// Increments index by 1.
   int readUint8() {
+    final byteData = this._byteData;
     final index = this.index;
+    final newIndex = index + 1;
+    if (newIndex > byteData.lengthInBytes) {
+      throw _eofException(index, "uint8");
+    }
     final value = _byteData.getUint8(index);
     this.index = index + 1;
     return value;
@@ -294,44 +325,57 @@ class RawReader {
   /// If [isCopyOnRead] is true, the method will return a new copy of the bytes.
   /// Otherwise the method will return a view at the bytes.
   Uint8List readUint8ListViewOrCopy(int length) {
-    final index = this.index;
-    if (index < 0 || index > _byteData.lengthInBytes) {
-      throw new ArgumentError.value(index, "index");
-    }
     if (length == null) {
       length = availableLengthInBytes;
     } else if (length > _byteData.lengthInBytes - index) {
       throw new ArgumentError.value(length, "length");
     }
-    if (isCopyOnRead == false) {
-      // We can return a view
-      return new Uint8List.view(
-        _byteData.buffer,
-        _byteData.offsetInBytes + index,
-        length,
-      );
+    if (isCopyOnRead) {
+      return readUint8ListCopy(length);
     }
-    return readUint8ListCopy(length);
+    return _readUint8ListView(length);
   }
 
-  /// Reads UTF-8 string.
+  /// Reads an UTF-8 string.
   String readUtf8(int length) {
-    final bytes = readUint8ListViewOrCopy(length);
+    final bytes = _readUint8ListView(length);
     return utf8.decode(bytes);
   }
 
   /// Reads a null-terminated UTF-8 string.
   String readUtf8NullEnding() {
-    final length = lengthUntilZero();
-    if (length < 0) {
-      return readUtf8(availableLengthInBytes);
-    }
+    var length = lengthUntilZero();
     final result = readUtf8(length);
     readUint8();
     return result;
   }
 
+  /// Reads an UTF-8 string. Throws [RawReaderException] if a multi-byte rune is
+  /// encountered.
+  String readUtf8Simple(int length) {
+    final bytes = _readUint8ListView(length);
+    for (var i = 0; i < bytes.length; i++) {
+      if (bytes[i] >= 128) {
+        throw _newException(
+          "Expected UTF-8 with single-byte runes, found a rune that's not single-byte",
+          index: index - length + i,
+        );
+      }
+    }
+    return new String.fromCharCodes(bytes);
+  }
+
+  /// Reads an UTF-8 string delimited by a zero-byte. Throws
+  /// [RawReaderException] if a multi-byte rune is encountered.
+  String readUtf8SimpleNullEnding(int length) {
+    var length = lengthUntilZero();
+    final result = readUtf8Simple(length);
+    readUint8();
+    return result;
+  }
+
   /// Reads a variable-length signed integer.
+  /// Compatible with [Protocol Buffers encoding](https://developers.google.com/protocol-buffers/docs/encoding).
   int readVarInt() {
     final value = readVarUint();
     if (value % 2 == 0) {
@@ -341,6 +385,7 @@ class RawReader {
   }
 
   /// Reads a variable-length unsigned integer.
+  /// Compatible with [Protocol Buffers encoding](https://developers.google.com/protocol-buffers/docs/encoding).
   int readVarUint() {
     final byteData = this._byteData;
     final start = this.index;
@@ -348,7 +393,7 @@ class RawReader {
     var result = 0;
     for (var i = 0; i < 64; i += 7) {
       if (index >= byteData.lengthInBytes) {
-        throw new StateError("Never-ending variable-length integer at $start");
+        throw _eofException(index, "VarUint");
       }
       final byte = byteData.getUint8(index);
       index++;
@@ -359,5 +404,89 @@ class RawReader {
     }
     this.index = index;
     return result;
+  }
+
+  /// Reads N bytes and verifies that every one is zero.
+  void readZeroes(int length) {
+    final start = this.index;
+    while (length > 0) {
+      final value = readUint8();
+      if (value != 0) {
+        throw _newException(
+            "expected $length zero bytes found a non-zero byte after ${this.index - 1 - start} bytes",
+            index: start);
+      }
+    }
+  }
+
+  RawReaderException _eofException(int index, String type) {
+    return _newException(
+      "Expected $type at $index, encountered EOF after ${_byteData.lengthInBytes - index} bytes.",
+    );
+  }
+
+  RawReaderException _newException(String message, {int index}) {
+    index ??= this.index;
+    var snippetStart = index - 16;
+    if (snippetStart < 0) {
+      snippetStart = 0;
+    }
+    var snippetEnd = index + 16;
+    if (snippetEnd > _byteData.lengthInBytes) {
+      snippetEnd = _byteData.lengthInBytes;
+    }
+    final byteData = this._byteData;
+    final snippet = new Uint8List.view(
+      byteData.buffer,
+      byteData.offsetInBytes + snippetStart,
+      snippetEnd - snippetStart,
+    );
+    return new RawReaderException(
+      message,
+      index: index,
+      snippet: snippet,
+      snippetIndex: index - snippetStart,
+    );
+  }
+
+  ByteData _readByteDataView(int length) {
+    final byteData = this._byteData;
+    final index = this.index;
+    final result = new ByteData.view(
+      byteData.buffer,
+      byteData.offsetInBytes + index,
+      length,
+    );
+    this.index = index + length;
+    return result;
+  }
+
+  Uint8List _readUint8ListView(int length) {
+    final byteData = this._byteData;
+    final index = this.index;
+    final result = new Uint8List.view(
+      byteData.buffer,
+      byteData.offsetInBytes + index,
+      length,
+    );
+    this.index = index + length;
+    return result;
+  }
+}
+
+/// Thrown by [RawReader].
+class RawReaderException implements Exception {
+  final String message;
+  final int index;
+  final Uint8List snippet;
+  final int snippetIndex;
+
+  RawReaderException(this.message,
+      {this.index, this.snippet, this.snippetIndex});
+
+  @override
+  String toString() {
+    final snippet = const DebugHexEncoder().convert(this.snippet);
+    return "Error at ${index}: $message\nBytes ${index}..${index + snippetIndex}..${index + snippet.length}: $snippet";
   }
 }

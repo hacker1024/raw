@@ -2,7 +2,6 @@ library raw;
 
 export 'src/equality.dart';
 export 'src/hex.dart';
-export 'src/raw_annotator.dart';
 export 'src/raw_data.dart';
 export 'src/raw_reader.dart';
 export 'src/raw_writer.dart';

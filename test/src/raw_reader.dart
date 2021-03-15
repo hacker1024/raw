@@ -1,8 +1,9 @@
+import 'dart:typed_data';
+
+import 'package:fixnum/fixnum.dart';
 import 'package:raw/raw.dart';
 import 'package:raw/test_helpers.dart';
 import 'package:test/test.dart';
-import 'dart:typed_data';
-import 'package:fixnum/fixnum.dart';
 
 void main() {
   group("RawReader:", () {
@@ -19,7 +20,7 @@ void main() {
 
       /// Converts reader to little-endian.
       void littleEndian(int length) {
-        final input = reader.bufferAsUint8List();
+        final input = reader.bufferAsUint8List;
         final inputCopy = new List<int>.from(input);
         final firstIndex = reader.index;
         final lastIndex = reader.index + length - 1;
@@ -32,7 +33,7 @@ void main() {
         reader = new RawReader.withBytes([0, 1, 2, 3, 4]);
         reader.index = 1;
         littleEndian(3);
-        expect(reader.bufferAsUint8List(), byteListEquals([0, 3, 2, 1, 4]));
+        expect(reader.bufferAsUint8List, byteListEquals([0, 3, 2, 1, 4]));
       });
 
       group("readUint8:", () {
@@ -45,8 +46,14 @@ void main() {
 
         test("simple call", () {
           expect(reader.readUint8(), expected,
-              reason: "index ${reader.index}, ${reader.bufferAsUint8List()}");
+              reason: "index ${reader.index}, ${reader.bufferAsUint8List}");
           expect(reader.index, expectedIndex);
+        });
+
+        test("throws RawReaderException when EOF is encountered", () {
+          reader.index = reader.bufferAsByteData.lengthInBytes;
+          expect(() => reader.readUint32(),
+              throwsA(const TypeMatcher<RawReaderException>()));
         });
       });
 
@@ -73,6 +80,11 @@ void main() {
           expect(reader.readUint16(Endian.little), expected);
           expect(reader.index, expectedIndex);
         });
+        test("throws RawReaderException when EOF is encountered", () {
+          reader.index = reader.bufferAsByteData.lengthInBytes - 1;
+          expect(() => reader.readUint16(),
+              throwsA(const TypeMatcher<RawReaderException>()));
+        });
       });
 
       group("readUint32:", () {
@@ -95,6 +107,11 @@ void main() {
           expect(reader.readUint32(Endian.little), expected);
           expect(reader.index, expectedIndex);
         });
+        test("throws RawReaderException when EOF is encountered", () {
+          reader.index = reader.bufferAsByteData.lengthInBytes - 3;
+          expect(() => reader.readUint32(),
+              throwsA(const TypeMatcher<RawReaderException>()));
+        });
       });
 
       group("readInt8:", () {
@@ -110,7 +127,7 @@ void main() {
         });
       });
 
-      group("readIn16:", () {
+      group("readInt16:", () {
         setUp(() {
           reader = new RawReader.withBytes(const <int>[0, 0, 0xFF, 0xFE]);
           reader.index = 2;
@@ -132,6 +149,12 @@ void main() {
           littleEndian(2);
           expect(reader.readInt16(Endian.little), expected);
           expect(reader.index, expectedIndex);
+        });
+
+        test("throws RawReaderException when EOF is encountered", () {
+          reader.index = reader.bufferAsByteData.lengthInBytes - 1;
+          expect(() => reader.readInt16(),
+              throwsA(const TypeMatcher<RawReaderException>()));
         });
       });
 
@@ -159,6 +182,12 @@ void main() {
           littleEndian(4);
           expect(reader.readInt32(Endian.little), expected);
           expect(reader.index, expectedIndex);
+        });
+
+        test("throws RawReaderException when EOF is encountered", () {
+          reader.index = reader.bufferAsByteData.lengthInBytes - 3;
+          expect(() => reader.readInt32(),
+              throwsA(const TypeMatcher<RawReaderException>()));
         });
       });
     });
@@ -227,23 +256,45 @@ void main() {
   group("readUint8ListViewOrCopy", () {
     test("When copyOnRead == false, returns a view", () {
       final original = new Uint8List(3);
-      final reader = new RawReader.withBytes(original, isCopyOnRead: false);
-      original[0] = 1;
+      const initialIndex = 1;
+      const readLength = 2;
 
-      final result = reader.readUint8ListViewOrCopy(1);
+      // New reader
+      final reader = new RawReader.withBytes(original, isCopyOnRead: false);
+      reader.index = initialIndex;
+
+      // Mutate original
+      original[initialIndex] = 1;
+
+      // Read
+      final result = reader.readUint8ListViewOrCopy(readLength);
       expect(result[0], 1);
-      original[0] = 2;
+      expect(reader.index, initialIndex + readLength);
+
+      // Mutate original
+      original[initialIndex] = 2;
       expect(result[0], 2);
     });
 
     test("When copyOnRead == true, returns a copy", () {
       final original = new Uint8List(3);
-      final reader = new RawReader.withBytes(original, isCopyOnRead: true);
-      original[0] = 1;
+      const initialIndex = 1;
+      const readLength = 2;
 
-      final result = reader.readUint8ListViewOrCopy(1);
+      // New reader
+      final reader = new RawReader.withBytes(original, isCopyOnRead: true);
+      reader.index = initialIndex;
+
+      // Mutate original
+      original[initialIndex] = 1;
+
+      // Read
+      final result = reader.readUint8ListViewOrCopy(readLength);
       expect(result[0], 1);
-      original[0] = 2;
+      expect(reader.index, initialIndex + readLength);
+
+      // Mutate original
+      original[initialIndex] = 2;
       expect(result[0], 1);
     });
   });
@@ -251,12 +302,23 @@ void main() {
   group("readUint8ListCopy", () {
     test("Always returns a copy", () {
       final original = new Uint8List(3);
-      final reader = new RawReader.withBytes(original, isCopyOnRead: false);
-      original[0] = 1;
+      const initialIndex = 1;
+      const readLength = 2;
 
-      final result = reader.readUint8ListCopy(1);
+      // New reader
+      final reader = new RawReader.withBytes(original, isCopyOnRead: false);
+      reader.index = initialIndex;
+
+      // Mutate original
+      original[initialIndex] = 1;
+
+      // Read
+      final result = reader.readUint8ListCopy(readLength);
       expect(result[0], 1);
-      original[0] = 2;
+      expect(reader.index, initialIndex + readLength);
+
+      // Mutate original
+      original[initialIndex] = 2;
       expect(result[0], 1);
     });
   });
@@ -264,23 +326,45 @@ void main() {
   group("readByteDataViewOrCopy", () {
     test("When copyOnRead == false, returns a view", () {
       final original = new Uint8List(3);
-      final reader = new RawReader.withBytes(original, isCopyOnRead: false);
-      original[0] = 1;
+      const initialIndex = 1;
+      const readLength = 2;
 
-      final result = reader.readByteDataViewOrCopy(1);
+      // New reader
+      final reader = new RawReader.withBytes(original, isCopyOnRead: false);
+      reader.index = initialIndex;
+
+      // Mutate original
+      original[initialIndex] = 1;
+
+      // Read
+      final result = reader.readByteDataViewOrCopy(readLength);
       expect(result.getUint8(0), 1);
-      original[0] = 2;
+      expect(reader.index, initialIndex + readLength);
+
+      // Mutate original
+      original[initialIndex] = 2;
       expect(result.getUint8(0), 2);
     });
 
     test("When copyOnRead == true, returns a copy", () {
       final original = new Uint8List(3);
-      final reader = new RawReader.withBytes(original, isCopyOnRead: true);
-      original[0] = 1;
+      const initialIndex = 1;
+      const readLength = 2;
 
-      final result = reader.readByteDataViewOrCopy(1);
+      // New reader
+      final reader = new RawReader.withBytes(original, isCopyOnRead: true);
+      reader.index = initialIndex;
+
+      // Mutate original
+      original[initialIndex] = 1;
+
+      // Read
+      final result = reader.readByteDataViewOrCopy(readLength);
       expect(result.getUint8(0), 1);
-      original[0] = 2;
+      expect(reader.index, initialIndex + readLength);
+
+      // Mutate original
+      original[initialIndex] = 2;
       expect(result.getUint8(0), 1);
     });
   });
@@ -288,12 +372,23 @@ void main() {
   group("readByteDataCopy", () {
     test("Always returns a copy", () {
       final original = new Uint8List(3);
-      final reader = new RawReader.withBytes(original, isCopyOnRead: false);
-      original[0] = 1;
+      const initialIndex = 1;
+      const readLength = 2;
 
-      final result = reader.readByteDataCopy(1);
+      // New reader
+      final reader = new RawReader.withBytes(original, isCopyOnRead: false);
+      reader.index = initialIndex;
+
+      // Mutate original
+      original[initialIndex] = 1;
+
+      // Read
+      final result = reader.readByteDataCopy(readLength);
       expect(result.getUint8(0), 1);
-      original[0] = 2;
+      expect(reader.index, initialIndex + readLength);
+
+      // Mutate original
+      original[initialIndex] = 2;
       expect(result.getUint8(0), 1);
     });
   });
@@ -319,14 +414,14 @@ void main() {
   test("readUtf8NullEnding (missing zero)", () {
     final input = [0x61, 0x62, 0x63];
     final reader = new RawReader.withBytes(input);
-    expect(reader.readUtf8NullEnding(), "abc");
-    expect(reader.index, 3);
+    expect(() => reader.readUtf8NullEnding(),
+        throwsA(TypeMatcher<RawReaderException>()));
   });
 
   test("writeZeroes", () {
     final writer = new RawWriter.withCapacity(4);
-    writer.index = 1;
-    writer.byteData.setUint8(3, 99);
+    writer.length = 1;
+    writer.bufferAsByteData.setUint8(3, 99);
     writer.writeZeroes(1023);
     expect(writer.toUint8ListView().every((v) => v == 0), isTrue);
   });

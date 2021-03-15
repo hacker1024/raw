@@ -2,6 +2,7 @@ import 'raw_reader.dart';
 import 'raw_writer.dart';
 import 'self_codec.dart';
 
+/// A simple [SelfEncoder] that holds bytes.
 class RawData extends SelfEncoder {
   static final RawData empty = new RawData(const []);
 
@@ -9,7 +10,7 @@ class RawData extends SelfEncoder {
 
   const RawData(this.bytes);
 
-  factory RawData.decode(RawReader reader, [int length]) {
+  factory RawData.decode(RawReader reader, int length) {
     length ??= reader.availableLengthInBytes;
     if (length == 0) {
       return empty;
@@ -18,7 +19,7 @@ class RawData extends SelfEncoder {
   }
 
   @override
-  int encodedMaxLength() => bytes.length;
+  int encodeSelfCapacity() => bytes.length;
 
   @override
   void encodeSelf(RawWriter writer) {
